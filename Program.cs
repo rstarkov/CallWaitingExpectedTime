@@ -87,19 +87,21 @@ internal class Program
     static List<Call> genCalls(Random rnd, int agentCount, double medianWaitLimit, double meanCallDuration)
     {
         var calls = new List<Call>();
-        //while (true)
-        //{
-        //    for (int i = 0; i < 500; i++)
-        //        calls.Add(new Call { ArrivedTime = rnd.NextDouble() * 100_000, TalkDuration = exp(rnd, 5.0) });
-        //    Compute(calls, 10);
-        //    var ordered = calls.OrderBy(c => c.Waiting).ToList();
-        //    var p50 = ordered[ordered.Count / 2].Waiting;
-        //    bool end = p50 > 5.0;
-        //    if (end || calls.Count % 500 == 0)
-        //        Console.WriteLine($"Calls: {calls.Count}, waiting median={p50:0.0}m, 95%={ordered[ordered.Count * 95 / 100].Waiting:0.0}m, max={ordered[^1].Waiting:0.0}");
-        //    if (end)
-        //        break;
-        //}
+#if false // Slow and naive
+        while (true)
+        {
+            for (int i = 0; i < 500; i++)
+                calls.Add(new Call { ArrivedTime = rnd.NextDouble() * 100_000, TalkDuration = exp(rnd, 5.0) });
+            Compute(calls, 10);
+            var ordered = calls.OrderBy(c => c.Waiting).ToList();
+            var p50 = ordered[ordered.Count / 2].Waiting;
+            bool end = p50 > 5.0;
+            if (end || calls.Count % 500 == 0)
+                Console.WriteLine($"Calls: {calls.Count}, waiting median={p50:0.0}m, 95%={ordered[ordered.Count * 95 / 100].Waiting:0.0}m, max={ordered[^1].Waiting:0.0}");
+            if (end)
+                break;
+        }
+#else // binary search
         int step = 1;
         bool growing = true;
         while (true)
@@ -109,7 +111,7 @@ internal class Program
                 for (int i = 0; i < step; i++)
                     calls.Add(new Call { ArrivedTime = rnd.NextDouble() * 100_000, TalkDuration = exp(rnd, meanCallDuration) });
             else
-                calls.RemoveRange(calls.Count + step, -step);
+                calls.RemoveRange(calls.Count + step, -step); // this removal overshoots all the time, and because adding back is random it might never get back up to target again, but it gets very close. Ideally this should use a Span instead of permanently removing items
             Compute(calls, agentCount);
             var ordered = calls.OrderBy(c => c.Waiting).ToList();
             var p50 = ordered[ordered.Count / 2].Waiting;
@@ -128,6 +130,7 @@ internal class Program
                 return ordered;
             }
         }
+#endif
     }
 
     static double exp(Random rnd, double mean)
