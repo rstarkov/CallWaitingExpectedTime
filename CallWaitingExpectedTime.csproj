@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="RT.Util.Core" Version="2.0.1733" />
+    <PackageReference Include="RT.Util.Core" Version="2.0.1734" />
   </ItemGroup>
 
 </Project>

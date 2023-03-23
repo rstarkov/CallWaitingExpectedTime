@@ -1,6 +1,7 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using RT.Util;
 using RT.Util.Collections;
+using RT.Util.ExtensionMethods;
 
 namespace CallWaitingExpectedTime;
 
@@ -10,6 +11,67 @@ internal class Program
 {
     static void Main(string[] args)
     {
+        CallBackAfterX();
+    }
+
+    static void CallBackAfterX()
+    {
+        // Computes the expected time left to wait if I hang up now and call back after X minutes. This is not expected to be constant; only a random callback time would have a constant expected wait.
+        var callbackTimes = new[] { 0, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 60, 90, 120, 240, 360, 720, 1440, 2160, 2880 };
+        var table = new AutoDictionary<int, int, List<double>>((_, _) => new());
+        long totalSamples = 0;
+        while (true)
+        {
+            GC.Collect(2, GCCollectionMode.Aggressive, true, true);
+            var allresults = Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Task.Run(() =>
+            {
+                var calls = genCalls(Random.Shared, 5, 5.0, 5.0).OrderBy(c => c.ArrivedTime).ToList();
+                var calltimes = calls.Select(c => c.ArrivedTime).ToList();
+                var results = new List<(int patience, int callbackAfter, double diff)>();
+                for (int s = 0; s < calls.Count / 20; s++)
+                {
+                    var call = calls[Random.Shared.Next(calls.Count)];
+                    for (int patience = 0; patience <= 80; patience++)
+                    {
+                        if (call.Waiting <= patience) // call was answered within my patience so skip it
+                            continue; // for patience = 0 I hang up on every call that isn't answered instantly (Waiting=0)
+                        var timeLeft = call.Waiting - patience; // how much time we still had to wait at the point we chose to hang up
+                        foreach (var callbackAfter in callbackTimes)
+                        {
+                            var wantedTime = call.ArrivedTime + patience + callbackAfter;
+                            var nearest = Math.Abs(calltimes.BinarySearch(wantedTime)); // although exact matches are extremely unlikely
+                            var precision = callbackAfter == 0 ? 0.2 : callbackAfter <= 10 ? 0.5 : callbackAfter < 120 ? 1 : 3;
+                            var ncall =
+                                (nearest - 1 >= 0 && nearest - 1 < calls.Count && Math.Abs(calls[nearest - 1].ArrivedTime - wantedTime) <= precision) ? calls[nearest - 1] :
+                                (nearest < calls.Count && Math.Abs(calls[nearest].ArrivedTime - wantedTime) <= precision) ? calls[nearest] : null;
+                            if (ncall == null)
+                                continue; // no good match for a callback after this amount of delay
+                            var timeDiff = ncall.Waiting - timeLeft; // positive: by calling back we'll be waiting this much longer; negative: this much less
+                            results.Add((patience, callbackAfter, timeDiff));
+                        }
+                    }
+                }
+                return results;
+            }))).GetAwaiter().GetResult().SelectMany(r => r);
+
+            foreach (var result in allresults)
+            {
+                var l = table[result.patience][result.callbackAfter];
+                if (l.Count < 1_000_000)
+                    l.Add(result.diff);
+            }
+            totalSamples += allresults.Count();
+            var stats = table.Values.SelectMany(tt => tt.Values).Select(tt => (long)tt.Count).MinMaxSumCount();
+            Console.WriteLine($"Total samples: {totalSamples:#,0}, stored: {stats.Sum:#,0}, min samples: {stats.Min:#,0}, max samples: {stats.Max:#,0}");
+            Console.WriteLine(Ut.FormatCsvRow(new[] { "" }.Concat(callbackTimes.Select(ct => ct.ToString())).ToArray()));
+            foreach (var patience in table.Keys)
+                Console.WriteLine(Ut.FormatCsvRow(new[] { (object)patience }.Concat(callbackTimes.Select(ct => (object)table[patience][ct].Average()))));
+        }
+    }
+
+    static void GeneralPatience()
+    {
+        // Computes expected time left to wait after having been in the queue for X minutes. The theory says that it's constant. This simulates that.
         var rnd = new Random(12345);
         var waits = new AutoDictionary<int, List<double>>(_ => new());
         int total = 0;
@@ -106,7 +168,7 @@ internal class Program
         bool growing = true;
         while (true)
         {
-            Console.WriteLine($"Calls: {calls.Count:#,0}, step: {step:#,0}");
+            //Console.WriteLine($"Calls: {calls.Count:#,0}, step: {step:#,0}");
             if (step > 0)
                 for (int i = 0; i < step; i++)
                     calls.Add(new Call { ArrivedTime = rnd.NextDouble() * 100_000, TalkDuration = exp(rnd, meanCallDuration) });
