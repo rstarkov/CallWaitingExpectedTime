@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using RT.Util;
 using RT.Util.Collections;
 
@@ -16,24 +16,24 @@ internal class Program
         while (true)
         {
 #if false // random sampling
-            //var calls = genCalls(rnd, 5, 5.0, 5.0);
-            //waits[-1].AddRange(calls.Select(c => c.Waiting));
-            //waits[-1].Sort();
-            //Console.WriteLine(Ut.FormatCsvRow(-1, waits[-1].Average(), waits[-1][waits[-1].Count / 2], waits[-1].Count));
-            //for (int patience = 0; patience <= 80; patience++)
-            //{
-            //    for (int s = 0; s < 1000; s++)
-            //    {
-            //        var call = calls[rnd.Next(calls.Count)];
-            //        if (call.Waiting < patience)
-            //            continue;
-            //        waits[patience].Add(call.Waiting - patience);
-            //    }
-            //    if (waits[patience].Count == 0)
-            //        continue;
-            //    waits[patience].Sort();
-            //    Console.WriteLine(Ut.FormatCsvRow(patience, waits[patience].Average(), waits[patience][waits[patience].Count / 2], waits[patience].Count));
-            //}
+            var calls = genCalls(rnd, 5, 5.0, 5.0);
+            waits[-1].AddRange(calls.Select(c => c.Waiting));
+            waits[-1].Sort();
+            Console.WriteLine(Ut.FormatCsvRow(-1, waits[-1].Average(), waits[-1][waits[-1].Count / 2], waits[-1].Count));
+            for (int patience = 0; patience <= 80; patience++)
+            {
+                for (int s = 0; s < 1000; s++)
+                {
+                    var call = calls[rnd.Next(calls.Count)];
+                    if (call.Waiting < patience)
+                        continue;
+                    waits[patience].Add(call.Waiting - patience);
+                }
+                if (waits[patience].Count == 0)
+                    continue;
+                waits[patience].Sort();
+                Console.WriteLine(Ut.FormatCsvRow(patience, waits[patience].Average(), waits[patience][waits[patience].Count / 2], waits[patience].Count));
+            }
 #else // sample everything
             for (int i = 0; i < 500 / 20; i++)
             {
