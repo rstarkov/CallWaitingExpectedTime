@@ -15,6 +15,7 @@ internal class Program
         int total = 0;
         while (true)
         {
+#if false // random sampling
             //var calls = genCalls(rnd, 5, 5.0, 5.0);
             //waits[-1].AddRange(calls.Select(c => c.Waiting));
             //waits[-1].Sort();
@@ -33,6 +34,7 @@ internal class Program
             //    waits[patience].Sort();
             //    Console.WriteLine(Ut.FormatCsvRow(patience, waits[patience].Average(), waits[patience][waits[patience].Count / 2], waits[patience].Count));
             //}
+#else // sample everything
             for (int i = 0; i < 500 / 20; i++)
             {
                 total += 20;
@@ -42,18 +44,19 @@ internal class Program
                 //Console.WriteLine(Ut.FormatCsvRow(-1, waits[-1].Average(), waits[-1][waits[-1].Count / 2], waits[-1].Count));
                 //for (int s = 0; s < calls.Count / 10; s++)
                 foreach (var call in calls)
-                    for (int patience = 40; patience <= 80; patience++)
+                    for (int patience = 0; patience <= 80; patience++)
                         if (patience < call.Waiting)
                             waits[patience].Add(call.Waiting - patience);
                 Console.Title = $"Total: {total:#,0}";
             }
-            for (int patience = 40; patience <= 80; patience++)
+            for (int patience = 0; patience <= 80; patience++)
             {
                 if (waits[patience].Count == 0)
                     continue;
                 waits[patience].Sort();
                 Console.WriteLine(Ut.FormatCsvRow(patience, waits[patience].Average(), waits[patience][waits[patience].Count / 2], waits[patience].Count)); // waits[-1].Count(w => w < patience) / (double)waits[-1].Count
             }
+#endif
         }
     }
 
